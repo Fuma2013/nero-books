@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bücher — Nero Übersicht</title>
+  <style>
+    :root{
+      --bg:#090b11;
+      --bg-2:#10141d;
+      --panel:#111723;
+      --panel-2:#192131;
+      --line:rgba(255,255,255,.08);
+      --text:#edf2f8;
+      --muted:#90a0b5;
+      --soft:#c4d0de;
+      --accent:#98c7ff;
+      --accent-2:#7e8fff;
+      --gold:#e4be7a;
+      --green:#79d7b3;
+      --shadow:0 18px 40px rgba(0,0,0,.38);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{
+      font-family:Inter,system-ui,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 15% 15%, rgba(126,143,255,.12), transparent 22%),
+        radial-gradient(circle at 85% 10%, rgba(152,199,255,.08), transparent 20%),
+        radial-gradient(circle at 50% 85%, rgba(255,255,255,.03), transparent 26%),
+        linear-gradient(180deg, #0b0e14 0%, #090b11 45%, #080a10 100%);
+      min-height:100vh;
+      position:relative;
+      overflow-x:hidden;
+    }
+    body::before,
+    body::after{
+      content:'';
+      position:fixed;
+      inset:auto;
+      pointer-events:none;
+      z-index:0;
+      filter:blur(18px);
+      opacity:.55;
+    }
+    body::before{
+      width:520px;height:520px;
+      top:-140px;right:-120px;
+      border-radius:44% 56% 63% 37% / 43% 40% 60% 57%;
+      background:radial-gradient(circle at 35% 35%, rgba(152,199,255,.14), rgba(126,143,255,.05) 45%, transparent 72%);
+      transform:rotate(14deg);
+    }
+    body::after{
+      width:460px;height:460px;
+      left:-140px;bottom:40px;
+      border-radius:58% 42% 39% 61% / 52% 48% 52% 48%;
+      background:radial-gradient(circle at 55% 45%, rgba(126,143,255,.10), rgba(152,199,255,.04) 42%, transparent 72%);
+      transform:rotate(-18deg);
+    }
+    .wrap{max-width:1380px;margin:0 auto;padding:28px 20px 48px;position:relative;z-index:1}
+    .hero{
+      display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+      padding:14px 4px 22px;
+    }
+    .hero-left{display:flex;gap:16px;align-items:center}
+    .hero-art{
+      width:94px;height:94px;border-radius:24px;flex:0 0 auto;
+      position:relative;overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow:0 18px 34px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+      background:
+        radial-gradient(circle at 50% 24%, rgba(232,214,173,.16), transparent 18%),
+        radial-gradient(circle at 50% 22%, rgba(236,221,193,.9) 0 7px, transparent 8px),
+        radial-gradient(circle at 24% 28%, rgba(255,255,255,.85) 0 1.2px, transparent 1.8px),
+        radial-gradient(circle at 73% 31%, rgba(255,255,255,.7) 0 1.2px, transparent 1.8px),
+        radial-gradient(circle at 66% 18%, rgba(255,255,255,.45) 0 1px, transparent 1.6px),
+        linear-gradient(180deg, #141925 0%, #0e121b 55%, #0b0f17 100%);
+    }
+    .hero-art::before{
+      content:'';position:absolute;inset:10px;border-radius:18px;
+      border:1px solid rgba(228,190,122,.18);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+    .hero-art::after{
+      content:'';position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+      width:60px;height:24px;border-radius:40px 40px 0 0;
+      border-top:1.5px solid rgba(228,190,122,.42);
+      border-left:1.5px solid rgba(228,190,122,.16);
+      border-right:1.5px solid rgba(228,190,122,.16);
+      opacity:.9;
+      box-shadow:0 -10px 30px rgba(126,143,255,.08);
+    }
+    h1{margin:0;font-size:30px;letter-spacing:-.02em}
+    .sub{margin-top:6px;color:var(--muted);font-size:14px}
+    .hero-stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+    .stat{
+      padding:12px 14px;border:1px solid var(--line);border-radius:14px;
+      background:rgba(255,255,255,.035);backdrop-filter:blur(8px);
+      min-width:110px;
+    }
+    .stat b{display:block;font-size:18px;margin-bottom:4px}
+    .stat span{font-size:12px;color:var(--muted)}
+
+    .toolbar{
+      position:static;z-index:1;
+      margin:6px 0 22px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      background:rgba(9,17,27,.90);
+      backdrop-filter:blur(14px);
+      box-shadow:var(--shadow);
+    }
+    .toolbar-grid{
+      display:grid;grid-template-columns:1.6fr repeat(3, minmax(140px,1fr)) auto;gap:10px;
+      margin-bottom:12px;
+    }
+    input[type=search], select, button{
+      width:100%;height:46px;border-radius:12px;border:1px solid var(--line);
+      background:#101620;color:var(--text);padding:0 14px;font-size:14px;
+      outline:none;
+    }
+    input[type=search]::placeholder{color:#6f8196}
+    button{
+      cursor:pointer;font-weight:600;
+      background:linear-gradient(180deg,#1a2435,#131c2a);
+      transition:transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    button:hover{transform:translateY(-1px);border-color:rgba(143,211,255,.35)}
+    .filter-block{margin-top:10px}
+    .filter-label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+    .accordion{margin-top:10px;border:1px solid var(--line);border-radius:14px;background:#0d1725;overflow:hidden}
+    #typeBlockMobile{display:none}
+    .accordion summary{list-style:none;cursor:pointer;padding:12px 14px;color:var(--text);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+    .accordion summary::-webkit-details-marker{display:none}
+    .accordion summary::after{content:'▾';color:var(--muted);transition:transform .15s ease}
+    .accordion[open] summary::after{transform:rotate(180deg)}
+    .accordion-body{padding:0 12px 12px}
+    .chip{
+      width:auto;height:auto;padding:9px 12px;border-radius:999px;
+      background:#0d1725;border:1px solid var(--line);color:var(--soft);
+      font-size:13px;font-weight:600;
+    }
+    .chip.active{
+      background:linear-gradient(180deg,#21324c,#18263a);
+      border-color:rgba(152,199,255,.34);
+      color:#eaf7ff;
+      box-shadow:0 8px 20px rgba(0,0,0,.2);
+    }
+    .chip.status-active{
+      background:linear-gradient(180deg,#26462f,#1a3122);
+      border-color:rgba(121,215,179,.35);
+      color:#dff9ef;
+    }
+
+    .resultline{
+      display:flex;justify-content:space-between;align-items:center;
+      margin:14px 2px 10px;color:var(--muted);font-size:13px;
+    }
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:18px}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border:1px solid var(--line);border-radius:22px;overflow:hidden;
+      box-shadow:var(--shadow);transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .card:hover{transform:translateY(-6px);border-color:rgba(143,211,255,.25);box-shadow:0 26px 50px rgba(0,0,0,.42)}
+    .cover-wrap{position:relative;aspect-ratio:2/3;background:#0b1420;overflow:hidden}
+    .cover-img{width:100%;height:100%;display:block;object-fit:cover;background:#0b1420}
+    .cover-fallback{
+      width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+      color:#6c8095;background:linear-gradient(180deg,#0c1522,#0a121d);font-size:14px;
+    }
+    .overlay{
+      position:absolute;inset:auto 0 0 0;padding:12px;
+      background:linear-gradient(180deg, transparent, rgba(4,8,13,.85));
+      display:flex;justify-content:space-between;align-items:flex-end;gap:10px;
+    }
+    .badge-row{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;
+      border:1px solid rgba(255,255,255,.08);background:rgba(7,14,22,.72);
+      backdrop-filter:blur(6px);
+    }
+    .badge.rec{color:#ffe7a7;border-color:rgba(233,196,106,.22)}
+    .badge.score{color:#bde0ff;border-color:rgba(143,211,255,.24)}
+    .badge.type{color:#c8d5e5}
+    .badge.status{color:#d7f8ec;border-color:rgba(121,215,179,.2)}
+    .badge.ku-on{color:#e9fff6;border-color:rgba(121,215,179,.28);background:rgba(20,52,39,.82)}
+    .badge.ku-off{color:#ffe1e1;border-color:rgba(255,120,120,.22);background:rgba(63,24,24,.82)}
+
+    .meta{padding:14px 14px 16px}
+    .title{margin:0 0 8px;font-size:16px;line-height:1.3;letter-spacing:-.01em}
+    .author{color:var(--soft);font-size:13px;margin-bottom:12px}
+    .tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:28px}
+    .tag{
+      font-size:11px;padding:6px 9px;border-radius:999px;
+      background:#132235;color:#9fd6ff;border:1px solid rgba(159,214,255,.12)
+    }
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+    .mini{
+      background:#0d1725;border:1px solid var(--line);border-radius:12px;
+      padding:8px 10px;
+    }
+    .mini b{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;font-weight:600}
+    .mini span{font-size:13px;color:var(--text)}
+    .actions{display:flex;gap:8px}
+    .actions a, .actions button{
+      flex:1;text-decoration:none;text-align:center;padding:11px 12px;border-radius:12px;
+      color:var(--text);border:1px solid var(--line);background:#0d1725;font-weight:600;font-size:13px;
+      cursor:pointer;
+    }
+    .actions a.primary, .actions button.primary{background:linear-gradient(180deg,#22344d,#17273a);border-color:rgba(152,199,255,.18)}
+
+    .modal-backdrop{
+      position:fixed;inset:0;background:rgba(2,6,12,.72);backdrop-filter:blur(8px);
+      display:none;align-items:center;justify-content:center;padding:20px;z-index:100;
+    }
+    .modal-backdrop.open{display:flex}
+    .modal{
+      width:min(980px, 100%);max-height:min(88vh, 1000px);overflow:auto;
+      background:linear-gradient(180deg,#0f1724,#0c1420);border:1px solid var(--line);
+      border-radius:24px;box-shadow:0 30px 70px rgba(0,0,0,.5);padding:18px;
+    }
+    .modal-top{display:grid;grid-template-columns:280px 1fr;gap:22px}
+    .modal-cover{aspect-ratio:2/3;border-radius:18px;overflow:hidden;background:#0b1420}
+    .modal-cover img{width:100%;height:100%;object-fit:cover;display:block}
+    .modal-cover .cover-fallback{height:100%}
+    .modal-title-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .modal h2{margin:0;font-size:28px;line-height:1.15}
+    .modal-author{margin-top:8px;color:var(--soft);font-size:15px}
+    .modal-badges{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+    .modal-grid{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px;margin:14px 0 18px}
+    .detail-box{background:#101620;border:1px solid var(--line);border-radius:14px;padding:12px}
+    .detail-box b{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+    .detail-box span{font-size:14px;color:var(--text);white-space:pre-wrap}
+    .modal-section{margin-top:14px}
+    .modal-section h3{margin:0 0 8px;font-size:14px;color:#d9e7f5}
+    .modal-section p{margin:0;color:var(--soft);line-height:1.55;white-space:pre-wrap}
+    .modal-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    .modal-actions a, .modal-actions button{
+      text-decoration:none;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+      background:#101620;color:var(--text);font-weight:700;cursor:pointer;font-size:14px;
+    }
+    .modal-actions a.primary{background:linear-gradient(180deg,#294263,#1d314a);border-color:rgba(152,199,255,.22)}
+    .modal-actions a.link-ok{background:linear-gradient(180deg,#21543d,#183a2b);border-color:rgba(121,215,179,.30);color:#e8fff5}
+    .modal-actions .link-missing{background:linear-gradient(180deg,#5a2525,#3f1b1b);border-color:rgba(255,120,120,.25);color:#ffd9d9;cursor:not-allowed;opacity:.95}
+
+    .empty{
+      border:1px dashed rgba(255,255,255,.14);border-radius:18px;padding:30px;color:var(--muted);
+      text-align:center;background:rgba(255,255,255,.02)
+    }
+
+    @media (max-width: 1100px){
+      .toolbar-grid{grid-template-columns:1fr 1fr 1fr;}
+    }
+    @media (max-width: 760px){
+      .wrap{padding:18px 14px 36px}
+      .hero{flex-direction:column;align-items:flex-start;padding-bottom:10px}
+      .hero-stats{justify-content:flex-start}
+      .toolbar{position:static;top:auto;padding:10px;border-radius:16px}
+      .toolbar-grid{grid-template-columns:1fr;gap:8px}
+      .resultline{font-size:12px;gap:10px;align-items:flex-start;flex-direction:column}
+      h1{font-size:24px}
+      .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+      .meta-grid{grid-template-columns:1fr}
+      .filter-block.status-block{margin-top:8px}
+      .filter-block.status-block .chip-row{overflow:auto;flex-wrap:nowrap;padding-bottom:2px}
+      .filter-block.status-block .chip{white-space:nowrap}
+      .filter-block.desktop-inline{display:none}
+      #typeBlockMobile{display:block}
+      .accordion{display:block}
+      .accordion.desktop-inline{display:none}
+      .modal{padding:14px;border-radius:18px}
+      .modal-top{grid-template-columns:1fr;gap:14px}
+      .modal h2{font-size:22px}
+      .modal-grid{grid-template-columns:1fr}
+    }
+    @media (min-width: 761px){
+      #typeBlockMobile{display:none}
+      .accordion{display:none}
+      .accordion.desktop-inline{display:block}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-art" aria-hidden="true"></div>
+        <div>
+          <h1>Bücher — Nero Übersicht</h1>
+          <div class="sub">Clean Dark Library · Empfehlungen, Filter, schnelle Übersicht</div>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><b id="stat-total">0</b><span>Bücher</span></div>
+        <div class="stat"><b id="stat-visible">0</b><span>sichtbar</span></div>
+        <div class="stat"><b id="stat-top">0</b><span>Top 10</span></div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="toolbar-grid">
+        <input id="q" type="search" placeholder="Suche Titel, Autor oder Tags" />
+        <select id="sort">
+          <option value="empfehlung">Sortierung: Empfehlung</option>
+          <option value="overall">Sortierung: Overall</option>
+          <option value="title">Sortierung: Titel</option>
+          <option value="author">Sortierung: Autor</option>
+        </select>
+        <select id="coverFilter">
+          <option value="">Alle Cover</option>
+          <option value="with">Nur mit Cover</option>
+          <option value="without">Nur ohne Cover</option>
+        </select>
+        <button id="refreshData">Daten aktualisieren</button>
+        <button id="clearTypeTag">Typen/Tags leeren</button>
+        <button id="reset">Alles zurücksetzen</button>
+      </div>
+
+      <div class="filter-block status-block">
+        <div class="filter-label">Lesestatus</div>
+        <div class="chip-row" id="statusButtons">
+          <button class="chip" data-status-mode="all">Alle</button>
+          <button class="chip" data-status-mode="read">Gelesen</button>
+          <button class="chip" data-status-mode="open">Offen</button>
+        </div>
+      </div>
+
+      <details class="accordion desktop-inline">
+        <summary>Statuswerte auswählen</summary>
+        <div class="accordion-body">
+          <div class="chip-row" id="statusChips"></div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Statuswerte auswählen</summary>
+        <div class="accordion-body">
+          <div class="chip-row" id="statusChipsMobile"></div>
+        </div>
+      </details>
+
+      <div class="filter-block desktop-inline">
+        <div class="filter-label">Typen (Mehrfachauswahl)</div>
+        <div class="chip-row" id="typeChips"></div>
+      </div>
+
+      <div class="filter-block" id="typeBlockMobile">
+        <div class="filter-label">Typen (Mehrfachauswahl)</div>
+        <div class="chip-row" id="typeChipsMobile"></div>
+      </div>
+
+      <details class="accordion desktop-inline">
+        <summary>Tags auswählen</summary>
+        <div class="accordion-body">
+          <div class="chip-row" id="tagChips"></div>
+        </div>
+      </details>
+
+      <details class="accordion">
+        <summary>Tags auswählen</summary>
+        <div class="accordion-body">
+          <div class="chip-row" id="tagChipsMobile"></div>
+        </div>
+      </details>
+
+      <div class="resultline">
+        <div id="resultline-left">Lade Daten …</div>
+        <div id="resultline-right">Direktlink per Karte</div>
+      </div>
+    </section>
+
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+<script>
+const state = {
+  items: [],
+  selectedTypes: new Set(),
+  selectedTags: new Set(),
+  selectedStatuses: new Set(),
+  statusMode: 'all'
+};
+
+async function load(forceFresh = false){
+  const url = forceFresh ? `data.json?t=${Date.now()}` : 'data.json';
+  const resp = await fetch(url, { cache: 'no-store' });
+  const js = await resp.json();
+  const rows = js.values.slice(1);
+  const cols = js.values[0];
+  const items = rows.map((r, idx) => {
+    const obj = {};
+    cols.forEach((c,i)=> obj[c]=r[i]||'');
+    obj.__index = idx;
+    return obj;
+  });
+  state.items = items;
+  initFilters(items);
+  bindStatusButtons();
+  updateStats(items, items);
+  applyFilters();
+}
+
+function normalizeCoverUrl(url){
+  if(!url) return '';
+  let u = url.trim();
+  u = u.replace(/\._S[XY]\d+_\.jpg$/i, '._SY600_.jpg');
+  u = u.replace(/\._SX\d+_\.jpg$/i, '._SY600_.jpg');
+  u = u.replace(/\._SY\d+_\.jpg$/i, '._SY600_.jpg');
+  u = u.replace(/\._AC_[A-Z]{1,2}\d+_\.jpg$/i, '._SL1500_.jpg');
+  u = u.replace(/\._S[XY]\d+_\.jpg$/i, '._SL1500_.jpg');
+  return u;
+}
+
+function extractCoverUrl(it){
+  const raw = (it['F_raw'] || '').trim();
+  if(raw.startsWith('http://') || raw.startsWith('https://')) return normalizeCoverUrl(raw);
+  const cover = (it['Cover'] || '').trim();
+  const m = cover.match(/=IMAGE\("([^\"]+)"\)/i);
+  if(m) return normalizeCoverUrl(m[1]);
+  const m2 = cover.match(/https?:\/\/[^\")\s]+/i);
+  if(m2) return normalizeCoverUrl(m2[0]);
+  return '';
+}
+
+function getStatusGroup(status){
+  const s = String(status || '').toLowerCase();
+  if(s.includes('gelesen')) return 'read';
+  return 'open';
+}
+
+function hasKU(value){
+  const s = String(value || '').trim().toLowerCase();
+  if(!s || s === '–' || s === '-') return false;
+  return ['ja','yes','y','true','1','ku','✅'].some(x => s.includes(x));
+}
+
+function initFilters(items){
+  ['typeChips','typeChipsMobile','tagChips','tagChipsMobile','statusChips','statusChipsMobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '';
+  });
+
+  const typeSet = new Set();
+  const tagSet = new Set();
+  const statusSet = new Set();
+  items.forEach(it => {
+    if(it['Typ']) typeSet.add(it['Typ']);
+    if(it['Status']) statusSet.add(it['Status']);
+    if(it['Vorschlag Mini-Tags']) it['Vorschlag Mini-Tags'].split(' • ').forEach(t=>t && tagSet.add(t));
+  });
+
+  const statusWraps = [document.getElementById('statusChips'), document.getElementById('statusChipsMobile')].filter(Boolean);
+  [...statusSet].sort((a,b)=> String(a).localeCompare(String(b), 'de')).forEach(status => {
+    statusWraps.forEach(wrap => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = status || 'Leer';
+      btn.dataset.value = status;
+      btn.dataset.group = 'status';
+      if(state.selectedStatuses.has(status)) btn.classList.add('active');
+      btn.addEventListener('click', () => toggleSetValue(state.selectedStatuses, status, 'status'));
+      wrap.appendChild(btn);
+    });
+  });
+
+  const typeWraps = [document.getElementById('typeChips'), document.getElementById('typeChipsMobile')].filter(Boolean);
+  [...typeSet].sort().forEach(type => {
+    typeWraps.forEach(typeWrap => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = type;
+      btn.dataset.value = type;
+      btn.dataset.group = 'type';
+      if(state.selectedTypes.has(type)) btn.classList.add('active');
+      btn.addEventListener('click', () => toggleSetValue(state.selectedTypes, type, 'type'));
+      typeWrap.appendChild(btn);
+    });
+  });
+
+  const tagWraps = [document.getElementById('tagChips'), document.getElementById('tagChipsMobile')].filter(Boolean);
+  [...tagSet].sort().forEach(tag => {
+    tagWraps.forEach(tagWrap => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = tag;
+      btn.dataset.value = tag;
+      btn.dataset.group = 'tag';
+      if(state.selectedTags.has(tag)) btn.classList.add('active');
+      btn.addEventListener('click', () => toggleSetValue(state.selectedTags, tag, 'tag'));
+      tagWrap.appendChild(btn);
+    });
+  });
+}
+
+function bindStatusButtons(){
+  document.querySelectorAll('[data-status-mode]').forEach(btn => {
+    if(btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      state.statusMode = btn.dataset.statusMode;
+      refreshStatusButtons();
+      applyFilters();
+    });
+  });
+  refreshStatusButtons();
+}
+
+function refreshStatusButtons(){
+  document.querySelectorAll('[data-status-mode]').forEach(btn => {
+    const active = btn.dataset.statusMode === state.statusMode;
+    btn.classList.toggle('active', active);
+    btn.classList.toggle('status-active', active);
+  });
+}
+
+function toggleSetValue(setRef, value, group){
+  if(setRef.has(value)) setRef.delete(value);
+  else setRef.add(value);
+  document.querySelectorAll(`.chip[data-group="${group}"][data-value="${CSS.escape(value)}"]`).forEach(btn => {
+    btn.classList.toggle('active', setRef.has(value));
+  });
+  applyFilters();
+}
+
+function num(v, fallback=9999){
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function sortItems(items){
+  const mode = document.getElementById('sort').value;
+  const arr = [...items];
+  if(mode === 'overall') arr.sort((a,b)=> num(a['Overall']) - num(b['Overall']));
+  else if(mode === 'title') arr.sort((a,b)=> String(a['Titel / Reihe']||'').localeCompare(String(b['Titel / Reihe']||''), 'de'));
+  else if(mode === 'author') arr.sort((a,b)=> String(a['Autor']||'').localeCompare(String(b['Autor']||''), 'de'));
+  else arr.sort((a,b)=> num(a['Empfehlung']) - num(b['Empfehlung']));
+  return arr;
+}
+
+function cardTemplate(it){
+  const title = it['Titel / Reihe'] || '—';
+  const author = it['Autor'] || '—';
+  const typ = it['Typ'] || '—';
+  const empfehlung = it['Empfehlung'] || '—';
+  const overall = it['Overall'] || '—';
+  const direct = it['Direktlink'] || '#';
+  const status = it['Status'] || '—';
+  const ku = it['KU'] || '—';
+  const kuOn = hasKU(ku);
+  const tags = (it['Vorschlag Mini-Tags'] || '').split(' • ').filter(Boolean).slice(0,4);
+  const cover = extractCoverUrl(it);
+  const hasCover = !!cover;
+  const coverNode = hasCover
+    ? `<img class="cover-img" loading="lazy" src="${cover}" alt="${escapeHtml(title)}" onerror="this.outerHTML='<div class=\'cover-fallback\'>Kein Cover</div>'">`
+    : `<div class="cover-fallback">Kein Cover</div>`;
+
+  return `
+    <article class="card" onclick="openModalByIndex(${Number(it.__index)})">
+      <div class="cover-wrap">
+        ${coverNode}
+        <div class="overlay">
+          <div class="badge-row">
+            <span class="badge rec">Empf. ${escapeHtml(String(empfehlung))}</span>
+            <span class="badge score">Overall ${escapeHtml(String(overall))}</span>
+            <span class="badge ${kuOn ? 'ku-on' : 'ku-off'}">${kuOn ? 'KU' : 'Kein KU'}</span>
+          </div>
+          <span class="badge type">${escapeHtml(String(typ))}</span>
+        </div>
+      </div>
+      <div class="meta">
+        <h3 class="title">${escapeHtml(title)}</h3>
+        <div class="author">${escapeHtml(author)}</div>
+        <div class="tags">
+          ${tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}
+          <span class="badge status">${escapeHtml(String(status))}</span>
+        </div>
+        <div class="meta-grid">
+          <div class="mini"><b>Empfehlung</b><span>${escapeHtml(String(empfehlung))}</span></div>
+          <div class="mini"><b>Overall</b><span>${escapeHtml(String(overall))}</span></div>
+        </div>
+        <div class="actions">
+          <button class="primary" type="button" onclick="openModalByIndex(${Number(it.__index)})">Details öffnen</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function render(items){
+  const grid = document.getElementById('grid');
+  if(!items.length){
+    grid.innerHTML = `<div class="empty">Keine Treffer mit den aktuellen Filtern.</div>`;
+    return;
+  }
+  grid.innerHTML = items.map(cardTemplate).join('');
+}
+
+function openModalByIndex(idx){
+  const it = state.items.find(x => Number(x.__index) === Number(idx));
+  if(!it) return;
+  const cover = extractCoverUrl(it);
+  const direct = (it['Direktlink'] || '').trim();
+  const goodreads = (it['Goodreads'] || '').trim();
+  const amazon = (it['Amazon.de (Kindle • Band 1)'] || '').trim();
+  const hasDirect = /^https?:\/\//i.test(direct);
+  const hasAmazon = /^https?:\/\//i.test(amazon);
+  const hasGoodreads = /^https?:\/\//i.test(goodreads);
+  const status = it['Status'] || '—';
+  const ku = it['KU'] || '—';
+  const kuOn = hasKU(ku);
+  const tags = (it['Vorschlag Mini-Tags'] || '').split(' • ').filter(Boolean);
+  const coverNode = cover
+    ? `<img src="${cover}" alt="${escapeHtml(it['Titel / Reihe'] || '')}" onerror="this.outerHTML='<div class=\'cover-fallback\'>Kein Cover</div>'">`
+    : `<div class="cover-fallback">Kein Cover</div>`;
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-top">
+      <div class="modal-cover">${coverNode}</div>
+      <div>
+        <div class="modal-title-row">
+          <div>
+            <h2 id="modalTitle">${escapeHtml(it['Titel / Reihe'] || '—')}</h2>
+            <div class="modal-author">${escapeHtml(it['Autor'] || '—')}</div>
+          </div>
+        </div>
+        <div class="modal-badges">
+          <span class="badge rec">Empf. ${escapeHtml(String(it['Empfehlung'] || '—'))}</span>
+          <span class="badge score">Overall ${escapeHtml(String(it['Overall'] || '—'))}</span>
+          <span class="badge type">${escapeHtml(String(it['Typ'] || '—'))}</span>
+          <span class="badge status">${escapeHtml(String(status))}</span>
+          <span class="badge ${kuOn ? 'ku-on' : 'ku-off'}">${kuOn ? 'KU verfügbar' : 'Kein KU'}</span>
+        </div>
+        <div class="tags">${tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+        <div class="modal-grid">
+          <div class="detail-box"><b>Sprache / DE verfügbar</b><span>${escapeHtml(it['Sprache / DE verfügbar'] || '—')}</span></div>
+          <div class="detail-box"><b>Reihenstatus</b><span>${escapeHtml(it['Reihenstatus'] || '—')}</span></div>
+          <div class="detail-box"><b>KU</b><span>${escapeHtml(ku || '—')}</span></div>
+          <div class="detail-box"><b>Intensität</b><span>${escapeHtml(it['Intensität'] || '—')}</span></div>
+          <div class="detail-box"><b>Quellenbasis / Sicherheit</b><span>${escapeHtml(it['Quellenbasis / Sicherheit'] || '—')}</span></div>
+        </div>
+        <div class="modal-section">
+          <h3>Kurzbeschreibung</h3>
+          <p>${escapeHtml(it['Kurzbeschreibung '] || '—')}</p>
+        </div>
+        <div class="modal-section">
+          <h3>Leserfeedback</h3>
+          <p>${escapeHtml(it['Leserfeedback (spoilerfrei)'] || '—')}</p>
+        </div>
+        <div class="modal-section">
+          <h3>Kommentar</h3>
+          <p>${escapeHtml(it['Kommentar'] || '—')}</p>
+        </div>
+        <div class="modal-actions">
+          ${hasDirect
+            ? `<a class="link-ok" href="${direct}" target="_blank" rel="noopener noreferrer">${kuOn ? 'Direktlink öffnen · KU' : 'Direktlink öffnen'}</a>`
+            : `<button type="button" class="link-missing">Kein Direktlink vorhanden</button>`}
+          ${hasAmazon ? `<a href="${amazon}" target="_blank" rel="noopener noreferrer">Amazon</a>` : ''}
+          ${hasGoodreads ? `<a href="${goodreads}" target="_blank" rel="noopener noreferrer">Goodreads</a>` : ''}
+          <button type="button" onclick="closeModal()">Schließen</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const backdrop = document.getElementById('modalBackdrop');
+  backdrop.classList.add('open');
+  backdrop.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal(){
+  const backdrop = document.getElementById('modalBackdrop');
+  backdrop.classList.remove('open');
+  backdrop.setAttribute('aria-hidden', 'true');
+}
+
+function updateStats(allItems, visibleItems){
+  document.getElementById('stat-total').textContent = allItems.length;
+  document.getElementById('stat-visible').textContent = visibleItems.length;
+  document.getElementById('stat-top').textContent = allItems.filter(it => num(it['Empfehlung']) <= 10).length;
+  document.getElementById('resultline-left').textContent = `${visibleItems.length} von ${allItems.length} Büchern sichtbar`;
+}
+
+function matchesType(it){
+  if(!state.selectedTypes.size) return true;
+  return state.selectedTypes.has(it['Typ'] || '');
+}
+
+function matchesTags(it){
+  if(!state.selectedTags.size) return true;
+  const tags = (it['Vorschlag Mini-Tags'] || '').split(' • ').filter(Boolean);
+  return tags.some(tag => state.selectedTags.has(tag));
+}
+
+function matchesStatus(it){
+  if(state.statusMode === 'all') return true;
+  const group = getStatusGroup(it['Status']);
+  return group === state.statusMode;
+}
+
+function matchesStatusValues(it){
+  if(!state.selectedStatuses.size) return true;
+  return state.selectedStatuses.has(it['Status'] || '');
+}
+
+function applyFilters(){
+  const q = document.getElementById('q').value.toLowerCase().trim();
+  const coverFilter = document.getElementById('coverFilter').value;
+
+  let items = state.items.filter(it => {
+    if(!matchesType(it)) return false;
+    if(!matchesTags(it)) return false;
+    if(!matchesStatus(it)) return false;
+    if(!matchesStatusValues(it)) return false;
+
+    const hasCover = !!extractCoverUrl(it);
+    if(coverFilter === 'with' && !hasCover) return false;
+    if(coverFilter === 'without' && hasCover) return false;
+
+    if(q){
+      const hay = [it['Titel / Reihe'], it['Autor'], it['Vorschlag Mini-Tags'], it['Typ'], it['Status']].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  items = sortItems(items);
+  updateStats(state.items, items);
+  render(items);
+}
+
+function isLocalRuntime(){
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.endsWith('.local');
+}
+
+async function refreshData(){
+  const btn = document.getElementById('refreshData');
+  const right = document.getElementById('resultline-right');
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Aktualisiere …';
+  right.textContent = 'Hole Daten aus dem Sheet …';
+  try {
+    const resp = await fetch('/refresh', { method: 'POST' });
+    const js = await resp.json();
+    if(!resp.ok || !js.ok) throw new Error(js.error || 'Refresh fehlgeschlagen');
+    right.textContent = `Aktualisiert · ${js.extracted_urls} Cover-URLs übernommen`;
+    await load(true);
+  } catch(err) {
+    console.error(err);
+    right.textContent = `Fehler: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+}
+
+document.getElementById('q').addEventListener('input', applyFilters);
+document.getElementById('sort').addEventListener('change', applyFilters);
+document.getElementById('coverFilter').addEventListener('change', applyFilters);
+document.getElementById('refreshData').addEventListener('click', refreshData);
+document.getElementById('clearTypeTag').addEventListener('click', ()=>{
+  state.selectedTypes.clear();
+  state.selectedTags.clear();
+  state.selectedStatuses.clear();
+  document.querySelectorAll('#typeChips .chip, #tagChips .chip, #typeChipsMobile .chip, #tagChipsMobile .chip, #statusChips .chip, #statusChipsMobile .chip').forEach(el => el.classList.remove('active'));
+  applyFilters();
+});
+document.getElementById('reset').addEventListener('click', ()=>{
+  state.selectedTypes.clear();
+  state.selectedTags.clear();
+  state.selectedStatuses.clear();
+  state.statusMode = 'all';
+  document.getElementById('q').value='';
+  document.getElementById('sort').value='empfehlung';
+  document.getElementById('coverFilter').value='';
+  document.querySelectorAll('#typeChips .chip, #tagChips .chip, #typeChipsMobile .chip, #tagChipsMobile .chip, #statusChips .chip, #statusChipsMobile .chip').forEach(el => el.classList.remove('active'));
+  refreshStatusButtons();
+  applyFilters();
+});
+
+if(!isLocalRuntime()){
+  const btn = document.getElementById('refreshData');
+  if(btn) btn.style.display = 'none';
+  document.getElementById('resultline-right').textContent = 'Öffentliche Vorschau';
+}
+
+document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+  if(e.target.id === 'modalBackdrop') closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closeModal();
+});
+
+load();
+</script>
+</body>
+</html>
