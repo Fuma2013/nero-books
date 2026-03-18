@@ -249,6 +249,20 @@
     .modal-actions a.primary{background:linear-gradient(180deg,#294263,#1d314a);border-color:rgba(152,199,255,.22)}
     .modal-actions a.link-ok{background:linear-gradient(180deg,#21543d,#183a2b);border-color:rgba(121,215,179,.30);color:#e8fff5}
     .modal-actions .link-missing{background:linear-gradient(180deg,#5a2525,#3f1b1b);border-color:rgba(255,120,120,.25);color:#ffd9d9;cursor:not-allowed;opacity:.95}
+    .timeline-list{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+    .timeline-group{display:grid;grid-template-columns:170px 1fr;gap:18px;align-items:flex-start}
+    .timeline-date{position:relative;padding-left:18px;color:#d8e7f7;font-weight:800;font-size:14px}
+    .timeline-date::before{content:'';position:absolute;left:0;top:5px;width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 6px rgba(152,199,255,.08)}
+    .timeline-items{border-left:1px solid rgba(255,255,255,.08);padding-left:18px;display:flex;flex-direction:column;gap:10px}
+    .timeline-card{background:#101620;border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:start}
+    .timeline-card.released{border-color:rgba(121,215,179,.30);box-shadow:0 0 0 1px rgba(121,215,179,.10) inset, 0 10px 24px rgba(20,70,44,.16)}
+    .timeline-cover{width:58px;height:84px;border-radius:10px;overflow:hidden;background:#0d1320}
+    .timeline-cover img{width:100%;height:100%;object-fit:cover;display:block}
+    .timeline-card-title{font-weight:700;margin-bottom:4px}
+    .timeline-release-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(24,58,43,.9);color:#e8fff5;border:1px solid rgba(121,215,179,.32);margin-bottom:8px}
+    .timeline-card-meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+    .timeline-card-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .timeline-card-actions a,.timeline-card-actions button{text-decoration:none;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#152032;color:var(--text);font-weight:600;font-size:12px;cursor:pointer}
 
     .empty{
       border:1px dashed rgba(255,255,255,.14);border-radius:18px;padding:30px;color:var(--muted);
@@ -279,6 +293,8 @@
       .modal-top{grid-template-columns:1fr;gap:14px}
       .modal h2{font-size:22px}
       .modal-grid{grid-template-columns:1fr}
+      .timeline-group{grid-template-columns:1fr;gap:8px}
+      .timeline-items{padding-left:12px}
     }
     @media (min-width: 761px){
       #typeBlockMobile{display:none}
@@ -294,7 +310,7 @@
         <div class="hero-art" aria-hidden="true"></div>
         <div>
           <h1>Bücher — Nero Übersicht</h1>
-          <div class="sub">Clean Dark Library · Empfehlungen, Filter, schnelle Übersicht</div>
+          <div class="sub">Clean Dark Library · Empfehlungen, Filter, schnelle Übersicht · <span id="appVersionLabel">v0.1.0</span></div>
         </div>
       </div>
       <div class="hero-stats">
@@ -318,6 +334,7 @@
           <option value="with">Nur mit Cover</option>
           <option value="without">Nur ohne Cover</option>
         </select>
+        <button id="timelineBtn">Timeline</button>
         <button id="refreshData">Daten aktualisieren</button>
         <button id="clearTypeTag">Typen/Tags leeren</button>
         <button id="reset">Alles zurücksetzen</button>
@@ -385,7 +402,15 @@
     </div>
   </div>
 
+  <div id="timelineBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="timelineTitle">
+      <div id="timelineContent"></div>
+    </div>
+  </div>
+
 <script>
+const APP_VERSION = 'v0.1.0';
+
 const state = {
   items: [],
   selectedTypes: new Set(),
@@ -395,6 +420,8 @@ const state = {
 };
 
 async function load(forceFresh = false){
+  const versionEl = document.getElementById('appVersionLabel');
+  if(versionEl) versionEl.textContent = APP_VERSION;
   const url = forceFresh ? `data.json?t=${Date.now()}` : 'data.json';
   const resp = await fetch(url, { cache: 'no-store' });
   const js = await resp.json();
@@ -617,6 +644,104 @@ function render(items){
   grid.innerHTML = items.map(cardTemplate).join('');
 }
 
+function parseReleaseInfo(value){
+  const raw = String(value || '').trim();
+  if(!raw || raw === '–' || raw === '-') return { raw, sortKey: Number.MAX_SAFE_INTEGER, label: 'Ohne Datum', state: 'unknown', date: null };
+  const lower = raw.toLowerCase();
+  const monthMap = { januar:1, februar:2, märz:3, maerz:3, april:4, mai:5, juni:6, juli:7, august:8, september:9, oktober:10, november:11, dezember:12 };
+  let year = new Date().getFullYear();
+  const yearMatch = raw.match(/(20\d{2})/);
+  if(yearMatch) year = Number(yearMatch[1]);
+  let day = null, month = null;
+  const dm = raw.match(/(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?/);
+  if(dm){
+    day = Number(dm[1]);
+    month = Number(dm[2]);
+    if(dm[3]) year = Number(dm[3].length === 2 ? `20${dm[3]}` : dm[3]);
+  } else {
+    for(const [name, num] of Object.entries(monthMap)){
+      if(lower.includes(name)){ month = num; break; }
+    }
+  }
+  if(lower.includes('erschienen') || lower.includes('released') || lower.includes('bereits')){
+    return { raw, sortKey: -1, label: raw, state: 'released', date: null };
+  }
+  if(month && day){
+    const date = new Date(year, month - 1, day);
+    return { raw, sortKey: Number(`${year}${String(month).padStart(2,'0')}${String(day).padStart(2,'0')}`), label: `${String(day).padStart(2,'0')}.${String(month).padStart(2,'0')}.${year}`, state: 'dated', date };
+  }
+  if(month){
+    const date = new Date(year, month - 1, 1);
+    return { raw, sortKey: Number(`${year}${String(month).padStart(2,'0')}01`), label: raw, state: 'month', date };
+  }
+  return { raw, sortKey: Number.MAX_SAFE_INTEGER - 1, label: raw, state: 'text', date: null };
+}
+
+function openTimeline(){
+  const now = new Date();
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  const items = state.items
+    .map(it => ({ it, rel: parseReleaseInfo(it['Erscheinungsdatum / Release-Status']) }))
+    .filter(x => x.rel.raw)
+    .filter(x => {
+      if(!x.rel.date) return false;
+      return x.rel.date >= threeMonthsAgo;
+    });
+  items.sort((a,b) => a.rel.sortKey - b.rel.sortKey || String(a.it['Titel / Reihe']||'').localeCompare(String(b.it['Titel / Reihe']||''), 'de'));
+
+  const groups = new Map();
+  for(const entry of items){
+    const key = entry.rel.label;
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  }
+
+  const sections = [...groups.entries()].map(([label, entries]) => {
+    const cards = entries.map(({it, rel}) => {
+      const direct = (it['Direktlink'] || '').trim();
+      const hasDirect = /^https?:\/\//i.test(direct);
+      const cover = extractCoverUrl(it);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const isReleased = rel.date && rel.date <= today;
+      return `
+        <div class="timeline-card ${isReleased ? 'released' : ''}">
+          <div class="timeline-cover">${cover ? `<img src="${cover}" alt="${escapeHtml(it['Titel / Reihe'] || '')}">` : `<div class="cover-fallback">Kein Cover</div>`}</div>
+          <div>
+            ${isReleased ? `<div class="timeline-release-badge">Jetzt verfügbar</div>` : ''}
+            <div class="timeline-card-title">${escapeHtml(it['Titel / Reihe'] || '—')}</div>
+            <div class="timeline-card-meta">${escapeHtml(it['Autor'] || '—')} · ${escapeHtml(it['Typ'] || '—')} · ${escapeHtml(it['Status'] || '—')}</div>
+            <div class="timeline-card-actions">
+              <button type="button" onclick="openModalByIndex(${Number(it.__index)}); closeTimeline();">Details</button>
+              ${hasDirect ? `<a href="${direct}" target="_blank" rel="noopener noreferrer">Direktlink</a>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="timeline-group"><div class="timeline-date">${escapeHtml(label)}</div><div class="timeline-items">${cards}</div></div>`;
+  }).join('');
+
+  document.getElementById('timelineContent').innerHTML = `
+    <div class="modal-title-row">
+      <div>
+        <h2 id="timelineTitle">Release-Timeline</h2>
+        <div class="modal-author">Angezeigt werden kommende Titel plus die letzten 3 Monate</div>
+      </div>
+    </div>
+    <div class="timeline-list">${sections || '<div class="empty">Keine passenden Release-Daten im Zeitraum gefunden.</div>'}</div>
+    <div class="modal-actions"><button type="button" onclick="closeTimeline()">Schließen</button></div>
+  `;
+  const backdrop = document.getElementById('timelineBackdrop');
+  backdrop.classList.add('open');
+  backdrop.setAttribute('aria-hidden', 'false');
+}
+
+function closeTimeline(){
+  const backdrop = document.getElementById('timelineBackdrop');
+  backdrop.classList.remove('open');
+  backdrop.setAttribute('aria-hidden', 'true');
+}
+
 function openModalByIndex(idx){
   const it = state.items.find(x => Number(x.__index) === Number(idx));
   if(!it) return;
@@ -656,6 +781,7 @@ function openModalByIndex(idx){
         <div class="modal-grid">
           <div class="detail-box"><b>Sprache / DE verfügbar</b><span>${escapeHtml(it['Sprache / DE verfügbar'] || '—')}</span></div>
           <div class="detail-box"><b>Reihenstatus</b><span>${escapeHtml(it['Reihenstatus'] || '—')}</span></div>
+          <div class="detail-box"><b>Erscheinungsdatum / Release-Status</b><span>${escapeHtml(it['Erscheinungsdatum / Release-Status'] || '—')}</span></div>
           <div class="detail-box"><b>KU</b><span>${escapeHtml(ku || '—')}</span></div>
           <div class="detail-box"><b>Intensität</b><span>${escapeHtml(it['Intensität'] || '—')}</span></div>
           <div class="detail-box"><b>Quellenbasis / Sicherheit</b><span>${escapeHtml(it['Quellenbasis / Sicherheit'] || '—')}</span></div>
@@ -779,6 +905,7 @@ async function refreshData(){
 document.getElementById('q').addEventListener('input', applyFilters);
 document.getElementById('sort').addEventListener('change', applyFilters);
 document.getElementById('coverFilter').addEventListener('change', applyFilters);
+document.getElementById('timelineBtn').addEventListener('click', openTimeline);
 document.getElementById('refreshData').addEventListener('click', refreshData);
 document.getElementById('clearTypeTag').addEventListener('click', ()=>{
   state.selectedTypes.clear();
@@ -809,8 +936,11 @@ if(!isLocalRuntime()){
 document.getElementById('modalBackdrop').addEventListener('click', (e) => {
   if(e.target.id === 'modalBackdrop') closeModal();
 });
+document.getElementById('timelineBackdrop').addEventListener('click', (e) => {
+  if(e.target.id === 'timelineBackdrop') closeTimeline();
+});
 document.addEventListener('keydown', (e) => {
-  if(e.key === 'Escape') closeModal();
+  if(e.key === 'Escape') { closeModal(); closeTimeline(); }
 });
 
 load();
