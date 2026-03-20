@@ -1,10 +1,10 @@
 # Bücher-Webseite – Technische Doku
 
 ## Aktuelle lokale Version
-- **v0.2.0**
+- **v0.2.1**
 
 ## Zweck
-Diese Seite visualisiert die Google-Sheet-Tabelle **"Nero Normalisiert"** als browsbare Bücherübersicht mit Cover, Filtern und Detail-Modal.
+Diese Seite visualisiert die Google-Sheet-Tabelle **`Nero Normalisiert`** als browsbare Bücherübersicht mit Cover, Filtern und Detail-Modal.
 
 Pfad der Webdateien:
 - `site/index.html`
@@ -19,53 +19,66 @@ Lokale Vorschau:
 
 ---
 
-## Datenquelle
-Google Sheet: **Nero Normalisiert**
+## Wichtige Grundregel
+Die Website arbeitet im Frontend primär mit **Header-Namen aus `data.json`**, nicht mit hart codierten Spaltenbuchstaben.
 
-Wichtige Spalten:
-- **F = Cover**
-- **G = F_raw**
-- **M = Status**
-- **N = Vorschlag Mini-Tags**
-- **S = Amazon.de (Kindle • Band 1)**
-- **T = Typ**
-- **U = Overall**
-- **W = Empfehlung**
-- **AB = Direktlink**
-- **H = KU**
+Spaltenbuchstaben sind nur hilfreich, wenn sie wirklich mit dem aktuellen Live-Sheet übereinstimmen.
+Für den kanonischen Tabellenstand ist `projects/buch-datenbank/SCHEMA.md` maßgeblich.
 
 ---
 
-## Kritische Regel: Cover-Spalte nicht anfassen
+## Datenquelle
+Google Sheet: **`Nero Normalisiert`**
 
-### Spalte F = `Cover`
+Das Frontend nutzt u. a. diese Header-Namen:
+- `Cover`
+- `F_raw`
+- `Status`
+- `Vorschlag Mini-Tags`
+- `Typ`
+- `Overall`
+- `Empfehlung`
+- `Direktlink`
+- `KU`
+- `Amazon.de (Kindle • Band 1)`
+- `Goodreads`
+- `Erscheinungsdatum / Release-Status`
+- `Leserfeedback (spoilerfrei)`
+- `Kurzbeschreibung `
+- `Reihenstatus`
+- `Quellenbasis / Sicherheit`
+
+---
+
+## Cover-Architektur
+
+### `Cover`
 Diese Spalte enthält in vielen Fällen eine Google-Sheets-Formel wie:
 ```text
 =IMAGE("https://...")
 ```
 
 **Wichtig:**
-- Spalte **F niemals überschreiben**
-- Spalte F ist **nicht zuverlässig direkt als Web-URL nutzbar**, wenn sie normal exportiert wird
-- Beim normalen Export erscheinen die Werte oft leer, obwohl visuell ein Bild da ist
+- `Cover` nicht als normale Web-URL behandeln
+- `Cover` dient primär der sichtbaren Darstellung im Sheet
+- bei normalem Export kann `Cover` leer wirken, obwohl im Sheet ein Bild sichtbar ist
 
-### Spalte G = `F_raw`
-Diese Spalte wurde als **Rohdaten-Spalte für Web-Cover** eingeführt.
+### `F_raw`
+Diese Spalte ist die **Web-Rohdaten-Spalte**.
 
 Sie enthält:
-- die aus `F` extrahierte Bild-URL als reinen Text
-- **keine Formel**
-- **keine lokalen `/images/...`-Pfade** als Hauptweg
+- die aus `Cover` extrahierte Bild-URL als reinen Text
+- keine Formel
+- keine lokale Bildverwaltung als Hauptweg
 
 **Regel:**
-- Webseite soll primär **G / `F_raw`** verwenden
-- F bleibt visuell / Sheet-intern erhalten
+- Webseite soll primär `F_raw` verwenden
+- `Cover` bleibt die Sheet-/Anzeigequelle
 
 ---
 
 ## Wie die Cover-Extraktion funktioniert
-
-Normale Sheet-Reads liefern `F` oft leer.
+Normale Sheet-Reads liefern `Cover` oft leer.
 Die funktionierende Methode ist:
 
 ```bash
@@ -77,24 +90,24 @@ Dann aus der Formel extrahieren:
 =IMAGE("https://...")
 ```
 
-und die URL nach **G / `F_raw`** schreiben.
+und die URL nach `F_raw` schreiben.
 
 ### Ergebnis
-- `F` bleibt intakt
-- `G` enthält echte Bild-URLs
+- `Cover` bleibt intakt
+- `F_raw` enthält echte Bild-URLs
 - die Webseite kann die Cover stabil laden
 
 ---
 
 ## Webseitenlogik
 
-## Cover-Lade-Reihenfolge
+### Cover-Lade-Reihenfolge
 In `site/index.html` gilt:
 1. Nutze `F_raw`, wenn dort eine gültige URL steht
 2. Falls `F_raw` leer ist, versuche URL direkt aus `Cover` zu extrahieren
 3. Sonst zeige Fallback „Kein Cover“
 
-## Qualitätsverbesserung der Cover
+### Qualitätsverbesserung der Cover
 Die Seite schreibt bekannte Thumbnail-URLs beim Rendern auf größere Varianten um.
 
 Beispiele:
@@ -130,9 +143,11 @@ Designrichtung: **Clean Dark Library**
 - Detail-Modal statt direktem Seitenwechsel
 - Direktlink-Button im Modal
 - KU-Badge auf Karte und im Modal
+- Release-Timeline
+- lokaler Search-/Refresh-Trigger
 
 ### Wichtige UX-Entscheidungen
-- **Toolbar ist nicht sticky** (Desktop und Mobile)
+- **Toolbar ist nicht sticky**
 - Karten öffnen ein **Modal**, nicht direkt einen neuen Tab
 - Externer Link geht erst aus dem Modal auf
 
@@ -158,9 +173,9 @@ Beim Klick auf eine Karte öffnet sich ein Popup mit:
 - Kommentar
 
 Buttons im Modal:
-- **Direktlink öffnen** → aus **Spalte AB / Direktlink**
-- Amazon → nur wenn echte URL vorhanden
-- Goodreads → nur wenn echte URL vorhanden
+- **Direktlink öffnen** → aus `Direktlink`
+- Amazon → nur wenn in `Amazon.de (Kindle • Band 1)` eine echte URL steht
+- Goodreads → nur wenn in `Goodreads` eine echte URL steht
 - Schließen
 
 ### Link-Farblogik
@@ -174,23 +189,17 @@ Buttons im Modal:
 Aktuell existieren zwei Ebenen:
 
 ### 1. Schnellfilter
-Abgeleitet aus Status:
+Abgeleitet aus `Status`:
 - **Gelesen** → wenn Status „gelesen“ enthält
 - **Offen** → alles andere
 
 ### 2. Exakte Statuswerte
-Zusätzliche Mehrfachauswahl direkt mit den echten Statuswerten aus der Tabelle, z. B.:
-- `✅ Gelesen`
-- `Neu`
-- `⏳ Geplant`
-- `📖 Lese ich gerade`
-- `🧪 Vorschlag`
-- usw.
+Zusätzliche Mehrfachauswahl direkt mit den echten Statuswerten aus der Tabelle.
 
 ---
 
 ## KU-Logik
-KU wird aus der entsprechenden Sheet-Spalte gelesen.
+KU wird aus `KU` gelesen.
 
 Anzeige:
 - Kartenbadge: `KU` oder `Kein KU`
@@ -202,30 +211,31 @@ Anzeige:
 ## Wichtige Dateien / Referenzen
 - `site/index.html` – komplette UI / Logik
 - `site/data.json` – exportierte Sheet-Daten für die Seite
-- `site/backup-nero-20260315T032023Z.json`
-- `site/backup-nero-20260315T032023Z.csv`
+- `site/backup-nero-20260315T032023Z.json` – historischer Backup-Stand
+- `site/backup-nero-20260315T032023Z.csv` – historischer Backup-Stand
 
 ---
 
 ## Regeln für spätere Änderungen
 
 ### Niemals tun
-- **Spalte F überschreiben**
-- Cover wieder auf lokale `/images/...`-Pfade als Hauptsystem umstellen
+- `Cover` blind überschreiben
+- `F_raw` als freie manuelle Spielspalte behandeln
 - tote Amazon/Goodreads-Buttons anzeigen
-- Sticky-Toolbar wieder aktivieren, ohne echten Grund
+- alte Buchstaben-Mappings aus veralteten Zwischenständen als Wahrheit behandeln
 
 ### Immer tun
-- erst prüfen, welche Sheet-Spalte wirklich genutzt wird
+- erst prüfen, welche **Header-Namen** das Frontend wirklich nutzt
 - bei Cover-Problemen zuerst `--render=FORMULA` prüfen
 - `F_raw` als Web-Zwischenschicht beibehalten
 - bei UI-Änderungen Mobile-Ansicht mitdenken
+- bei Schemaänderungen `SCHEMA.md` und Export gemeinsam prüfen
 
 ---
 
 ## Nächste sinnvolle Ausbaustufen
 - bessere Detailstruktur im Modal
-- evtl. Navigieren zum nächsten/vorherigen Titel im Modal
+- nächster/vorheriger Titel im Modal
 - Favoriten / Merkliste
 - öffentliche Deployment-Variante
 - sauberer Build-/Refresh-Workflow für `data.json`
