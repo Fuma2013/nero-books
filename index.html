@@ -1081,9 +1081,13 @@ document.getElementById('reset').addEventListener('click', ()=>{
 });
 
 if(!isLocalRuntime()){
-  const btn = document.getElementById('refreshData');
-  if(btn) btn.style.display = 'none';
-  document.getElementById('resultline-right').textContent = 'Öffentliche Vorschau';
+  const refreshBtn = document.getElementById('refreshData');
+  const proposalsBtn = document.getElementById('proposalsBtn');
+  const searchBtn = document.getElementById('searchOpenBtn');
+  if(refreshBtn) refreshBtn.style.display = 'none';
+  if(proposalsBtn) proposalsBtn.style.display = 'none';
+  if(searchBtn) searchBtn.style.display = 'none';
+  document.getElementById('resultline-right').textContent = 'Öffentliche Vorschau · ohne lokale Vorschlags-/Suchfunktionen';
 }
 
 document.getElementById('modalBackdrop').addEventListener('click', (e) => {
