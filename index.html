@@ -202,7 +202,7 @@
       font-size:11px;padding:6px 9px;border-radius:999px;
       background:#132235;color:#9fd6ff;border:1px solid rgba(159,214,255,.12)
     }
-    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+    .meta-grid{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:8px;margin-bottom:14px}
     .mini{
       background:#0d1725;border:1px solid var(--line);border-radius:12px;
       padding:8px 10px;
@@ -265,6 +265,15 @@
     .timeline-card-actions{display:flex;gap:8px;flex-wrap:wrap}
     .timeline-card-actions a,.timeline-card-actions button{text-decoration:none;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#152032;color:var(--text);font-weight:600;font-size:12px;cursor:pointer}
 
+    .rating-editor{background:linear-gradient(180deg,#111a28,#0d1521);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:14px}
+    .rating-row{display:flex;flex-direction:column;gap:8px}
+    .rating-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .rating-head b{font-size:14px;color:#dce8f5}
+    .rating-preview{font-size:13px;color:var(--soft);font-weight:700}
+    .rating-editor input[type=range]{width:100%;height:36px;accent-color:#98c7ff;background:transparent;padding:0}
+    .rating-save{width:100%;height:50px;border-radius:14px;font-size:15px;background:linear-gradient(180deg,#22344d,#17273a);border:1px solid rgba(152,199,255,.18)}
+    .modal-action-stack{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+
     .empty{
       border:1px dashed rgba(255,255,255,.14);border-radius:18px;padding:30px;color:var(--muted);
       text-align:center;background:rgba(255,255,255,.02)
@@ -294,6 +303,9 @@
       .modal-top{grid-template-columns:1fr;gap:14px}
       .modal h2{font-size:22px}
       .modal-grid{grid-template-columns:1fr}
+      .rating-editor{padding:12px}
+      .rating-head{align-items:flex-start;flex-direction:column}
+      .rating-save{height:52px}
       .timeline-group{grid-template-columns:1fr;gap:8px}
       .timeline-items{padding-left:12px}
     }
@@ -311,7 +323,7 @@
         <div class="hero-art" aria-hidden="true"></div>
         <div>
           <h1>Bücher — Nero Übersicht</h1>
-          <div class="sub">Clean Dark Library · Empfehlungen, Filter, schnelle Übersicht · <span id="appVersionLabel">v0.2.1</span></div>
+          <div class="sub">Clean Dark Library · Empfehlungen, Filter, schnelle Übersicht · <span id="appVersionLabel">v0.2.2</span></div>
         </div>
       </div>
       <div class="hero-stats">
@@ -440,19 +452,33 @@
   </div>
 
 <script>
-const APP_VERSION = 'v0.2.1';
+const APP_VERSION = 'v0.2.2';
+const IS_PUBLIC_READONLY = !['127.0.0.1', 'localhost'].includes(window.location.hostname);
 
 const state = {
   items: [],
   selectedTypes: new Set(),
   selectedTags: new Set(),
   selectedStatuses: new Set(),
-  statusMode: 'all'
+  statusMode: 'all',
+  currentModalIndex: null,
+  currentModalRow: null
 };
+
+function applyReadOnlyMode(){
+  if(!IS_PUBLIC_READONLY) return;
+  ['searchOpenBtn','proposalsBtn','refreshData'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  const right = document.getElementById('resultline-right');
+  if(right) right.textContent = 'Read-only Vorschau';
+}
 
 async function load(forceFresh = false){
   const versionEl = document.getElementById('appVersionLabel');
   if(versionEl) versionEl.textContent = APP_VERSION;
+  applyReadOnlyMode();
   const url = forceFresh ? `data.json?t=${Date.now()}` : 'data.json';
   const resp = await fetch(url, { cache: 'no-store' });
   const js = await resp.json();
@@ -462,6 +488,7 @@ async function load(forceFresh = false){
     const obj = {};
     cols.forEach((c,i)=> obj[c]=r[i]||'');
     obj.__index = idx;
+    obj.__row = idx + 2;
     return obj;
   });
   state.items = items;
@@ -598,6 +625,33 @@ function num(v, fallback=9999){
   return Number.isFinite(n) ? n : fallback;
 }
 
+function formatRatingValue(v){
+  const n = Number(String(v ?? '').replace(',', '.'));
+  if(!Number.isFinite(n)) return '—';
+  return Number.isInteger(n) ? String(n) : String(n).replace('.', ',');
+}
+
+function renderScale(value, icon, max = 5){
+  const n = Number(String(value ?? '').replace(',', '.'));
+  if(!Number.isFinite(n) || n <= 0) return '—';
+  const full = Math.floor(n);
+  const half = n - full >= 0.5 ? 1 : 0;
+  const empty = Math.max(0, max - full - half);
+  return `${icon.repeat(full)}${half ? '◐' : ''}${'·'.repeat(empty)}`;
+}
+
+function overallDisplay(v){
+  const n = Number(String(v ?? '').replace(',', '.'));
+  if(!Number.isFinite(n)) return '—';
+  return `${renderScale(n, '⭐')} ${formatRatingValue(n)}`;
+}
+
+function sRatingDisplay(v){
+  const n = Number(String(v ?? '').replace(',', '.'));
+  if(!Number.isFinite(n)) return '—';
+  return `🌶️ ${formatRatingValue(n)}/10`;
+}
+
 function sortItems(items){
   const mode = document.getElementById('sort').value;
   const arr = [...items];
@@ -614,6 +668,9 @@ function cardTemplate(it){
   const typ = it['Typ'] || '—';
   const empfehlung = it['Empfehlung'] || '—';
   const overall = it['Overall'] || '—';
+  const sRating = it['S Rating'] || '—';
+  const overallUi = overallDisplay(overall);
+  const sRatingUi = sRatingDisplay(sRating);
   const direct = it['Direktlink'] || '#';
   const status = it['Status'] || '—';
   const ku = it['KU'] || '—';
@@ -632,7 +689,7 @@ function cardTemplate(it){
         <div class="overlay">
           <div class="badge-row">
             <span class="badge rec">Empf. ${escapeHtml(String(empfehlung))}</span>
-            <span class="badge score">Overall ${escapeHtml(String(overall))}</span>
+            <span class="badge score">${escapeHtml(overallUi)}</span>
             <span class="badge ${kuOn ? 'ku-on' : 'ku-off'}">${kuOn ? 'KU' : 'Kein KU'}</span>
           </div>
           <span class="badge type">${escapeHtml(String(typ))}</span>
@@ -647,7 +704,8 @@ function cardTemplate(it){
         </div>
         <div class="meta-grid">
           <div class="mini"><b>Empfehlung</b><span>${escapeHtml(String(empfehlung))}</span></div>
-          <div class="mini"><b>Overall</b><span>${escapeHtml(String(overall))}</span></div>
+          <div class="mini"><b>Overall</b><span>${escapeHtml(overallUi)}</span></div>
+          <div class="mini"><b>S Rating</b><span>${escapeHtml(sRatingUi)}</span></div>
         </div>
         <div class="actions">
           <button class="primary" type="button" onclick="openModalByIndex(${Number(it.__index)})">Details öffnen</button>
@@ -776,6 +834,8 @@ function closeTimeline(){
 function openModalByIndex(idx){
   const it = state.items.find(x => Number(x.__index) === Number(idx));
   if(!it) return;
+  state.currentModalIndex = Number(it.__index);
+  state.currentModalRow = Number(it.__row);
   const cover = extractCoverUrl(it);
   const direct = (it['Direktlink'] || '').trim();
   const goodreads = (it['Goodreads'] || '').trim();
@@ -787,6 +847,8 @@ function openModalByIndex(idx){
   const ku = it['KU'] || '—';
   const kuOn = hasKU(ku);
   const tags = (it['Vorschlag Mini-Tags'] || '').split(' • ').filter(Boolean);
+  const canRateOverall = ['✅ Gelesen', 'Abgebrochen'].includes(status);
+  const canRateSpice = canRateOverall || status === 'Lese ich gerade';
   const coverNode = cover
     ? `<img src="${cover}" alt="${escapeHtml(it['Titel / Reihe'] || '')}" onerror="this.outerHTML='<div class=\'cover-fallback\'>Kein Cover</div>'">`
     : `<div class="cover-fallback">Kein Cover</div>`;
@@ -799,11 +861,14 @@ function openModalByIndex(idx){
           <div>
             <h2 id="modalTitle">${escapeHtml(it['Titel / Reihe'] || '—')}</h2>
             <div class="modal-author">${escapeHtml(it['Autor'] || '—')}</div>
+            <input type="hidden" id="modalRowValue" value="${Number(it.__row)}">
+            <input type="hidden" id="modalIndexValue" value="${Number(it.__index)}">
           </div>
         </div>
         <div class="modal-badges">
           <span class="badge rec">Empf. ${escapeHtml(String(it['Empfehlung'] || '—'))}</span>
-          <span class="badge score">Overall ${escapeHtml(String(it['Overall'] || '—'))}</span>
+          <span class="badge score">${escapeHtml(overallDisplay(it['Overall']))}</span>
+          <span class="badge score">${escapeHtml(sRatingDisplay(it['S Rating']))}</span>
           <span class="badge type">${escapeHtml(String(it['Typ'] || '—'))}</span>
           <span class="badge status">${escapeHtml(String(status))}</span>
           <span class="badge ${kuOn ? 'ku-on' : 'ku-off'}">${kuOn ? 'KU verfügbar' : 'Kein KU'}</span>
@@ -813,9 +878,42 @@ function openModalByIndex(idx){
           <div class="detail-box"><b>Sprache / DE verfügbar</b><span>${escapeHtml(it['Sprache / DE verfügbar'] || '—')}</span></div>
           <div class="detail-box"><b>Reihenstatus</b><span>${escapeHtml(it['Reihenstatus'] || '—')}</span></div>
           <div class="detail-box"><b>Erscheinungsdatum / Release-Status</b><span>${escapeHtml(it['Erscheinungsdatum / Release-Status'] || '—')}</span></div>
-          <div class="detail-box"><b>KU</b><span>${escapeHtml(ku || '—')}</span></div>
-          <div class="detail-box"><b>Intensität</b><span>${escapeHtml(it['Intensität'] || '—')}</span></div>
-          <div class="detail-box"><b>Quellenbasis / Sicherheit</b><span>${escapeHtml(it['Quellenbasis / Sicherheit'] || '—')}</span></div>
+          <div class="detail-box"><b>Seiten</b><span>${escapeHtml(it['Seiten'] || '—')}</span></div>
+        </div>
+        ${IS_PUBLIC_READONLY ? '' : `<div class="modal-action-stack">
+          <div class="detail-box"><b>Status ändern</b><span><select id="modalStatusSelect">
+            <option value="Neu" ${status === 'Neu' ? 'selected' : ''}>Neu</option>
+            <option value="Lese ich gerade" ${status === 'Lese ich gerade' ? 'selected' : ''}>Lese ich gerade</option>
+            <option value="⏳ Geplant" ${status === '⏳ Geplant' ? 'selected' : ''}>⏳ Geplant</option>
+            <option value="✅ Gelesen" ${status === '✅ Gelesen' ? 'selected' : ''}>✅ Gelesen</option>
+            <option value="Abgebrochen" ${status === 'Abgebrochen' ? 'selected' : ''}>Abgebrochen</option>
+          </select>
+          <button type="button" id="saveStatusBtn" data-index="${Number(it.__index)}" data-row="${Number(it.__row)}" onclick="return saveStatusFromButton(this)">Speichern</button></span></div>
+          ${canRateSpice ? `<div class="detail-box"><b>${canRateOverall ? 'Bewertung' : 'Spice während des Lesens'}</b><span><div class="rating-editor">
+            ${canRateOverall ? `<div class="rating-row">
+              <div class="rating-head">
+                <b>Overall</b>
+                <span id="overallPreview" class="rating-preview">${escapeHtml(overallDisplay(it['Overall'] || 0))}</span>
+              </div>
+              <input id="modalOverallInput" type="range" min="0" max="5" step="0.5" value="${escapeHtml(String(it['Overall'] || '0'))}" oninput="updateRatingPreviews()">
+            </div>` : `<input id="modalOverallInput" type="hidden" value="${escapeHtml(String(it['Overall'] || '0'))}">`}
+            <div class="rating-row">
+              <div class="rating-head">
+                <b>S Rating</b>
+                <span id="sRatingPreview" class="rating-preview">${escapeHtml(sRatingDisplay(it['S Rating'] || 0))}</span>
+              </div>
+              <input id="modalSRatingInput" type="range" min="0" max="10" step="0.5" value="${escapeHtml(String(it['S Rating'] || '0'))}" oninput="updateRatingPreviews()">
+            </div>
+            <button type="button" id="saveRatingBtn" class="rating-save" onclick="return saveRatingFromButton(this)">${canRateOverall ? 'Bewertung speichern' : 'Spice speichern'}</button>
+          </div></span></div>` : ''}
+        </div>`}
+        <div class="modal-section">
+          <h3>Zusatzinfos</h3>
+          <div class="modal-grid">
+            <div class="detail-box"><b>KU</b><span>${escapeHtml(ku || '—')}</span></div>
+            <div class="detail-box"><b>Intensität</b><span>${escapeHtml(it['Intensität'] || '—')}</span></div>
+            <div class="detail-box"><b>Quellenbasis / Sicherheit</b><span>${escapeHtml(it['Quellenbasis / Sicherheit'] || '—')}</span></div>
+          </div>
         </div>
         <div class="modal-section">
           <h3>Kurzbeschreibung</h3>
@@ -840,9 +938,95 @@ function openModalByIndex(idx){
       </div>
     </div>
   `;
+  updateRatingPreviews();
   const backdrop = document.getElementById('modalBackdrop');
   backdrop.classList.add('open');
   backdrop.setAttribute('aria-hidden', 'false');
+}
+
+function updateRatingPreviews(){
+  const overallInput = document.getElementById('modalOverallInput');
+  const sRatingInput = document.getElementById('modalSRatingInput');
+  const overallPreview = document.getElementById('overallPreview');
+  const sRatingPreview = document.getElementById('sRatingPreview');
+  if(overallInput && overallPreview) overallPreview.textContent = overallDisplay(overallInput.value || 0);
+  if(sRatingInput && sRatingPreview) sRatingPreview.textContent = sRatingDisplay(sRatingInput.value || 0);
+}
+
+function saveStatusFromButton(btn){
+  let idx = Number(document.getElementById('modalIndexValue')?.value || state.currentModalIndex || 0);
+  let row = Number(document.getElementById('modalRowValue')?.value || state.currentModalRow || 0);
+  updateBookStatus(idx, row, btn);
+  return false;
+}
+
+function saveRatingFromButton(btn){
+  let idx = Number(document.getElementById('modalIndexValue')?.value || state.currentModalIndex || 0);
+  let row = Number(document.getElementById('modalRowValue')?.value || state.currentModalRow || 0);
+  updateBookRating(idx, row, btn);
+  return false;
+}
+
+async function updateBookRating(idx, row, btn = null){
+  const overallInput = document.getElementById('modalOverallInput');
+  const sRatingInput = document.getElementById('modalSRatingInput');
+  if(!overallInput || !sRatingInput) return;
+  const overall = String(overallInput.value || '').trim();
+  const sRating = String(sRatingInput.value || '').trim();
+  const title = (document.getElementById('modalTitle')?.textContent || '').trim();
+  const old = btn ? btn.textContent : '';
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = 'Bewertet …';
+  }
+  try {
+    const resp = await fetch('/book-rating', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ row, title, overall, sRating })
+    });
+    const js = await resp.json();
+    if(!resp.ok || !js.ok) throw new Error(js.error || 'Bewertung speichern fehlgeschlagen');
+    await load(true);
+    openModalByIndex(idx);
+  } catch(err) {
+    console.error(err);
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+    alert(`Fehler: ${err.message}`);
+  }
+}
+
+async function updateBookStatus(idx, row, btn = null){
+  const sel = document.getElementById('modalStatusSelect');
+  if(!sel) return;
+  const status = sel.value;
+  const title = (document.getElementById('modalTitle')?.textContent || '').trim();
+  const old = btn ? btn.textContent : '';
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = 'Speichert …';
+  }
+  try {
+    const resp = await fetch('/book-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ row, status, title })
+    });
+    const js = await resp.json();
+    if(!resp.ok || !js.ok) throw new Error(js.error || 'Status-Update fehlgeschlagen');
+    await load(true);
+    openModalByIndex(idx);
+  } catch(err) {
+    console.error(err);
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+    alert(`Fehler: ${err.message}`);
+  }
 }
 
 function closeModal(){
@@ -969,6 +1153,7 @@ async function openProposals(){
         <div>
           <h2 id="proposalsTitle">Vorschläge</h2>
           <div class="modal-author">Prüfbare Kandidaten aus <b>Nero Vorschläge</b></div>
+          <div id="proposalStatus" class="modal-author"></div>
         </div>
       </div>
       <div class="timeline-list">
@@ -1013,19 +1198,60 @@ function closeProposals(){
   backdrop.setAttribute('aria-hidden', 'true');
 }
 
-async function proposalAction(row, action){
+async function proposalAction(a, b, c){
+  let btn = null;
+  let row;
+  let action;
+
+  if(a && typeof a === 'object' && a.tagName){
+    btn = a;
+    row = b;
+    action = c;
+  } else {
+    row = a;
+    action = b;
+    const active = document.activeElement;
+    if(active && active.tagName === 'BUTTON') btn = active;
+  }
+
+  const old = btn ? btn.textContent : '';
+  const statusEl = document.getElementById('proposalStatus');
+  if(statusEl){
+    statusEl.textContent = action === 'accept' ? 'Wird übernommen …' : 'Wird abgelehnt …';
+  }
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = action === 'accept' ? '⏳ Wird übernommen …' : '⏳ Wird abgelehnt …';
+    btn.style.opacity = '1';
+    btn.style.background = action === 'accept' ? '#2563eb' : '#b91c1c';
+    btn.style.color = '#fff';
+    btn.style.borderColor = action === 'accept' ? '#2563eb' : '#b91c1c';
+  }
   try {
-    const resp = await fetch('/proposal-action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ row, action })
-    });
+    const [resp] = await Promise.all([
+      fetch('/proposal-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ row, action })
+      }),
+      new Promise(resolve => setTimeout(resolve, 700))
+    ]);
     const js = await resp.json();
     if(!resp.ok || !js.ok) throw new Error(js.error || 'Aktion fehlgeschlagen');
     await load(true);
     await openProposals();
   } catch(err) {
     console.error(err);
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = old;
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }
+    if(statusEl){
+      statusEl.textContent = 'Fehler bei der Aktion';
+    }
     alert(`Fehler: ${err.message}`);
   }
 }
